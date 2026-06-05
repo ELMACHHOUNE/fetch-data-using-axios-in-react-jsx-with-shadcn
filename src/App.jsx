@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import axios from "axios";
+import { Edit2Icon, TrashIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import DataTable from "./components/DataTable";
+import EditUserDialog from "./components/data-table/edit-user-dialog";
+import { Button } from "./components/ui/button";
 
 const columnHelper = createColumnHelper();
 
@@ -10,6 +13,15 @@ export default function App() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    age: "",
+    gender: "",
+    email: "",
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -41,6 +53,51 @@ export default function App() {
     };
   }, []);
 
+  const handleEdit = useCallback((user) => {
+    setEditingUser(user);
+    setEditForm({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      age: String(user.age),
+      gender: user.gender,
+      email: user.email,
+    });
+  }, []);
+
+  const handleDelete = useCallback((user) => {
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    }
+  }, []);
+
+  const handleFieldChange = useCallback((field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleSaveEdit = useCallback(() => {
+    if (!editingUser) return;
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === editingUser.id
+          ? {
+              ...u,
+              firstName: editForm.firstName,
+              lastName: editForm.lastName,
+              age: Number(editForm.age),
+              gender: editForm.gender,
+              email: editForm.email,
+            }
+          : u,
+      ),
+    );
+    setEditingUser(null);
+  }, [editingUser, editForm]);
+
+  const handleDialogOpenChange = useCallback((open) => {
+    if (!open) setEditingUser(null);
+  }, []);
+
   const columns = useMemo(
     () => [
       columnHelper.accessor("id", {
@@ -67,8 +124,31 @@ export default function App() {
         header: "Email",
         cell: (info) => info.getValue(),
       }),
+      columnHelper.accessor("actions", {
+        header: "Actions",
+        cell: (info) => (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEdit(info.row.original)}
+              aria-label={`Modifier l'utilisateur ${info.row.original.firstName} ${info.row.original.lastName}`}
+            >
+              <Edit2Icon className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleDelete(info.row.original)}
+              aria-label={`Supprimer l'utilisateur ${info.row.original.firstName} ${info.row.original.lastName}`}
+            >
+              <TrashIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      }),
     ],
-    [],
+    [handleEdit, handleDelete],
   );
 
   return (
@@ -94,6 +174,14 @@ export default function App() {
       ) : (
         <DataTable columns={columns} data={users} />
       )}
+
+      <EditUserDialog
+        open={editingUser !== null}
+        onOpenChange={handleDialogOpenChange}
+        form={editForm}
+        onFieldChange={handleFieldChange}
+        onSave={handleSaveEdit}
+      />
     </main>
   );
 }
