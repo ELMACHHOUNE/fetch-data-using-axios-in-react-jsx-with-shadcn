@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import axios from "axios";
 
 import DataTable from "./components/DataTable";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const columnHelper = createColumnHelper();
 
@@ -11,6 +13,8 @@ export default function App() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editingUser, setEditingUser] = useState(null);
+  const [form, setForm] = useState({});
 
   useEffect(() => {
     let isMounted = true;
@@ -40,6 +44,35 @@ export default function App() {
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  const openEdit = useCallback((user) => {
+    setEditingUser(user);
+    setForm({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      age: user.age,
+      gender: user.gender,
+      email: user.email,
+    });
+  }, []);
+
+  const closeEdit = useCallback(() => {
+    setEditingUser(null);
+    setForm({});
+  }, []);
+
+  const saveEdit = useCallback(() => {
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === editingUser.id ? { ...u, ...form } : u,
+      ),
+    );
+    closeEdit();
+  }, [editingUser, form, closeEdit]);
+
+  const deleteUser = useCallback((id) => {
+    setUsers((prev) => prev.filter((u) => u.id !== id));
   }, []);
 
   const columns = useMemo(
@@ -76,14 +109,18 @@ export default function App() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => alert(`Edit user ${row.original.id}`)}
+              onClick={() => openEdit(row.original)}
             >
               Edit
             </Button>
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => alert(`Delete user ${row.original.id}`)}
+              onClick={() => {
+                if (confirm("Delete this user?")) {
+                  deleteUser(row.original.id);
+                }
+              }}
             >
               Delete
             </Button>
@@ -91,7 +128,7 @@ export default function App() {
         ),
       }),
     ],
-    [],
+    [openEdit, deleteUser],
   );
 
   return (
@@ -117,6 +154,73 @@ export default function App() {
       ) : (
         <DataTable columns={columns} data={users} />
       )}
+
+      <Dialog open={!!editingUser} onClose={closeEdit}>
+        <DialogHeader>
+          <DialogTitle>Edit User</DialogTitle>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            saveEdit();
+          }}
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <label className="text-sm font-medium">First name</label>
+            <Input
+              value={form.firstName || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, firstName: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Last name</label>
+            <Input
+              value={form.lastName || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, lastName: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Age</label>
+            <Input
+              type="number"
+              value={form.age || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, age: Number(e.target.value) }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Gender</label>
+            <Input
+              value={form.gender || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, gender: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Email</label>
+            <Input
+              type="email"
+              value={form.email || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, email: e.target.value }))
+              }
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={closeEdit}>
+              Cancel
+            </Button>
+            <Button type="submit">Save</Button>
+          </div>
+        </form>
+      </Dialog>
     </main>
   );
 }
