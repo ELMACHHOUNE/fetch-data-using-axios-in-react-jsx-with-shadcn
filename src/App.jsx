@@ -3,6 +3,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import axios from "axios";
 
 import DataTable from "./components/DataTable";
+import { Button } from "@/components/ui/button";
 
 const columnHelper = createColumnHelper();
 
@@ -66,6 +67,28 @@ export default function App() {
       columnHelper.accessor("email", {
         header: "Email",
         cell: (info) => info.getValue(),
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => alert(`Edit user ${row.original.id}`)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => alert(`Delete user ${row.original.id}`)}
+            >
+              Delete
+            </Button>
+          </div>
+        ),
       }),
     ],
     [],
