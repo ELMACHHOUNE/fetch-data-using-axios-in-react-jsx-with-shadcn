@@ -3,6 +3,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import axios from "axios";
 
 import DataTable from "./components/DataTable";
+import { Button } from "./components/ui/button";
 
 const columnHelper = createColumnHelper();
 
@@ -10,6 +11,44 @@ export default function App() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  function handleEdit(user) {
+    const firstName = window.prompt("First name", user.firstName);
+    if (firstName === null) return;
+
+    const lastName = window.prompt("Last name", user.lastName);
+    if (lastName === null) return;
+
+    const email = window.prompt("Email", user.email);
+    if (email === null) return;
+
+    setUsers((currentUsers) =>
+      currentUsers.map((currentUser) =>
+        currentUser.id === user.id
+          ? {
+              ...currentUser,
+              firstName,
+              lastName,
+              email,
+            }
+          : currentUser,
+      ),
+    );
+  }
+
+  function handleDelete(user) {
+    const isConfirmed = window.confirm(
+      `Supprimer ${user.firstName} ${user.lastName} ?`,
+    );
+
+    if (!isConfirmed) return;
+
+    setUsers((currentUsers) =>
+      currentUsers.filter((currentUser) => currentUser.id !== user.id),
+    );
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -71,6 +110,28 @@ export default function App() {
     [],
   );
 
+  const filteredUsers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return users;
+
+    return users.filter((user) => {
+      const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
+      const email = String(user.email ?? "").toLowerCase();
+      const gender = String(user.gender ?? "").toLowerCase();
+
+      return (
+        fullName.includes(query) ||
+        email.includes(query) ||
+        gender.includes(query)
+      );
+    });
+  }, [users, searchQuery]);
+
+  function handleSearch(event) {
+    event.preventDefault();
+    setSearchQuery(searchInput);
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 p-6">
       <header className="space-y-2">
@@ -83,6 +144,19 @@ export default function App() {
         </p>
       </header>
 
+      <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          placeholder="Rechercher par nom, email ou genre"
+          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring sm:max-w-sm"
+        />
+        <Button type="submit" size="sm">
+          Rechercher
+        </Button>
+      </form>
+
       {loading ? (
         <div className="rounded-md border p-6 text-sm text-muted-foreground">
           Loading users...
@@ -92,7 +166,12 @@ export default function App() {
           {error}
         </div>
       ) : (
-        <DataTable columns={columns} data={users} />
+        <DataTable
+          columns={columns}
+          data={filteredUsers}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       )}
     </main>
   );
