@@ -7,6 +7,13 @@ import DataTable from "./components/DataTable";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
 const columnHelper = createColumnHelper();
 
 export default function App() {
@@ -14,6 +21,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    age: "",
+    gender: "",
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -34,9 +52,7 @@ export default function App() {
           setError(err?.message ?? "Something went wrong");
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     }
 
@@ -47,45 +63,54 @@ export default function App() {
     };
   }, []);
 
+  // DELETE
   const handleDelete = (id) => {
     setUsers((prev) => prev.filter((user) => user.id !== id));
+
+    setCurrentPage(1);
   };
 
+  // OPEN EDIT
   const handleEdit = (user) => {
-    alert(`Edit ${user.firstName} ${user.lastName}`);
+    setSelectedUser(user);
+    setForm({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      age: user.age,
+      gender: user.gender,
+    });
   };
 
+  // SAVE EDIT
+  const handleSave = () => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === selectedUser.id ? { ...u, ...form } : u)),
+    );
+
+    setSelectedUser(null);
+  };
+
+  // SEARCH
   const filteredUsers = users.filter((user) =>
     `${user.firstName} ${user.lastName}`
       .toLowerCase()
-      .includes(search.toLowerCase())
+      .includes(search.toLowerCase()),
   );
-
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
+  // COLUMNS
   const columns = useMemo(
     () => [
-      columnHelper.accessor("id", {
-        header: "ID",
-      }),
-
-      columnHelper.accessor("firstName", {
-        header: "First name",
-      }),
-
-      columnHelper.accessor("lastName", {
-        header: "Last name",
-      }),
-
-      columnHelper.accessor("age", {
-        header: "Age",
-      }),
-
-      columnHelper.accessor("gender", {
-        header: "Gender",
-      }),
-
-      columnHelper.accessor("email", {
-        header: "Email",
-      }),
+      columnHelper.accessor("id", { header: "ID" }),
+      columnHelper.accessor("firstName", { header: "First name" }),
+      columnHelper.accessor("lastName", { header: "Last name" }),
+      columnHelper.accessor("age", { header: "Age" }),
+      columnHelper.accessor("gender", { header: "Gender" }),
+      columnHelper.accessor("email", { header: "Email" }),
 
       {
         id: "actions",
@@ -111,7 +136,7 @@ export default function App() {
         ),
       },
     ],
-    [users]
+    [],
   );
 
   return (
@@ -120,13 +145,12 @@ export default function App() {
         <h1 className="text-3xl font-semibold tracking-tight">
           DummyJSON Users
         </h1>
-
         <p className="text-sm text-muted-foreground">
-          A shadcn/ui table powered by TanStack Table and populated from the
-          DummyJSON API.
+          A shadcn/ui table powered by TanStack Table.
         </p>
       </header>
 
+      {/* SEARCH */}
       <Input
         placeholder="Search user..."
         value={search}
@@ -134,6 +158,7 @@ export default function App() {
         className="max-w-sm"
       />
 
+      {/* TABLE */}
       {loading ? (
         <div className="rounded-md border p-6 text-sm text-muted-foreground">
           Loading users...
@@ -143,8 +168,66 @@ export default function App() {
           {error}
         </div>
       ) : (
-        <DataTable columns={columns} data={filteredUsers} />
+        <DataTable columns={columns} data={paginatedUsers} />
       )}
+      {/* PAGINATION */}
+      <div className="flex items-center justify-between mt-4">
+        <Button
+          variant="outline"
+          disabled={currentPage === 1}
+          onClick={() => setCurrentPage((p) => p - 1)}
+        >
+          Previous
+        </Button>
+
+        <span className="text-sm text-muted-foreground">
+          Page {currentPage} / {totalPages}
+        </span>
+
+        <Button
+          variant="outline"
+          disabled={currentPage === totalPages}
+          onClick={() => setCurrentPage((p) => p + 1)}
+        >
+          Next
+        </Button>
+      </div>
+      {/* EDIT DIALOG */}
+      <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3">
+            <Input
+              placeholder="First name"
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+            />
+
+            <Input
+              placeholder="Last name"
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+            />
+
+            <Input
+              placeholder="Email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+
+            <Input
+              placeholder="Age"
+              value={form.age}
+              onChange={(e) => setForm({ ...form, age: e.target.value })}
+            />
+
+            <Button onClick={handleSave}>Save changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
