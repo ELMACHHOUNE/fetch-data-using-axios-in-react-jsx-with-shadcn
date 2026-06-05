@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
+import { Pencil, Trash2 } from "lucide-react";
 import axios from "axios";
 
 import DataTable from "./components/DataTable";
+import { Button } from "./components/ui/button";
 
 const columnHelper = createColumnHelper();
 
@@ -41,6 +43,35 @@ export default function App() {
     };
   }, []);
 
+  const handleEdit = useCallback(async (user) => {
+    try {
+      const apiBase = import.meta.env.VITE_FAKE_API;
+      const payload = {
+        firstName: `${user.firstName}_edited`,
+        lastName: `${user.lastName}_edited`,
+      };
+      const res = await axios.put(`${apiBase}/users/${user.id}`, payload);
+      setUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, ...res.data } : u)),
+      );
+      alert(`User ${user.id} updated successfully`);
+    } catch (err) {
+      alert(`Failed to update user: ${err.message}`);
+    }
+  }, []);
+
+  const handleDelete = useCallback(async (user) => {
+    if (!confirm(`Delete user ${user.firstName} ${user.lastName}?`)) return;
+    try {
+      const apiBase = import.meta.env.VITE_FAKE_API;
+      await axios.delete(`${apiBase}/users/${user.id}`);
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+      alert(`User ${user.id} deleted successfully`);
+    } catch (err) {
+      alert(`Failed to delete user: ${err.message}`);
+    }
+  }, []);
+
   const columns = useMemo(
     () => [
       columnHelper.accessor("id", {
@@ -67,8 +98,32 @@ export default function App() {
         header: "Email",
         cell: (info) => info.getValue(),
       }),
+      columnHelper.display({
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEdit(row.original)}
+              title="Edit"
+            >
+              <Pencil className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDelete(row.original)}
+              title="Delete"
+            >
+              <Trash2 className="size-4 text-destructive" />
+            </Button>
+          </div>
+        ),
+      }),
     ],
-    [],
+    [handleEdit, handleDelete],
   );
 
   return (
