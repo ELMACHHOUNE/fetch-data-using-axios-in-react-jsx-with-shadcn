@@ -4,12 +4,16 @@ import axios from "axios";
 
 import DataTable from "./components/DataTable";
 
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
 const columnHelper = createColumnHelper();
 
 export default function App() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -19,8 +23,8 @@ export default function App() {
         setLoading(true);
         setError("");
 
-        const apiBase = import.meta.env.VITE_FAKE_API;
-        const res = await axios.get(`${apiBase}/users`);
+        const apiBase = import.meta.env.VITE_DUMMYJSON_API;
+        const res = await axios.get(`${apiBase}/users?limit=20`);
 
         if (isMounted) {
           setUsers(res.data?.users ?? []);
@@ -30,7 +34,9 @@ export default function App() {
           setError(err?.message ?? "Something went wrong");
         }
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
@@ -41,34 +47,71 @@ export default function App() {
     };
   }, []);
 
+  const handleDelete = (id) => {
+    setUsers((prev) => prev.filter((user) => user.id !== id));
+  };
+
+  const handleEdit = (user) => {
+    alert(`Edit ${user.firstName} ${user.lastName}`);
+  };
+
+  const filteredUsers = users.filter((user) =>
+    `${user.firstName} ${user.lastName}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  );
+
   const columns = useMemo(
     () => [
       columnHelper.accessor("id", {
         header: "ID",
-        cell: (info) => info.getValue(),
       }),
+
       columnHelper.accessor("firstName", {
         header: "First name",
-        cell: (info) => info.getValue(),
       }),
+
       columnHelper.accessor("lastName", {
         header: "Last name",
-        cell: (info) => info.getValue(),
       }),
+
       columnHelper.accessor("age", {
         header: "Age",
-        cell: (info) => info.getValue(),
       }),
+
       columnHelper.accessor("gender", {
         header: "Gender",
-        cell: (info) => info.getValue(),
       }),
+
       columnHelper.accessor("email", {
         header: "Email",
-        cell: (info) => info.getValue(),
       }),
+
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEdit(row.original)}
+            >
+              Edit
+            </Button>
+
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              Delete
+            </Button>
+          </div>
+        ),
+      },
     ],
-    [],
+    [users]
   );
 
   return (
@@ -77,11 +120,19 @@ export default function App() {
         <h1 className="text-3xl font-semibold tracking-tight">
           DummyJSON Users
         </h1>
+
         <p className="text-sm text-muted-foreground">
           A shadcn/ui table powered by TanStack Table and populated from the
           DummyJSON API.
         </p>
       </header>
+
+      <Input
+        placeholder="Search user..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="max-w-sm"
+      />
 
       {loading ? (
         <div className="rounded-md border p-6 text-sm text-muted-foreground">
@@ -92,7 +143,7 @@ export default function App() {
           {error}
         </div>
       ) : (
-        <DataTable columns={columns} data={users} />
+        <DataTable columns={columns} data={filteredUsers} />
       )}
     </main>
   );
