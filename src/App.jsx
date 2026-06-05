@@ -4,6 +4,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import axios from "axios";
 
 import DataTable from "./components/DataTable";
+import EditUserDialog from "./components/EditUserDialog";
 import { Button } from "./components/ui/button";
 
 const columnHelper = createColumnHelper();
@@ -12,6 +13,8 @@ export default function App() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editingUser, setEditingUser] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -43,21 +46,15 @@ export default function App() {
     };
   }, []);
 
-  const handleEdit = useCallback(async (user) => {
-    try {
-      const apiBase = import.meta.env.VITE_FAKE_API;
-      const payload = {
-        firstName: `${user.firstName}_edited`,
-        lastName: `${user.lastName}_edited`,
-      };
-      const res = await axios.put(`${apiBase}/users/${user.id}`, payload);
-      setUsers((prev) =>
-        prev.map((u) => (u.id === user.id ? { ...u, ...res.data } : u)),
-      );
-      alert(`User ${user.id} updated successfully`);
-    } catch (err) {
-      alert(`Failed to update user: ${err.message}`);
-    }
+  const handleEdit = useCallback((user) => {
+    setEditingUser(user);
+    setDialogOpen(true);
+  }, []);
+
+  const handleSaved = useCallback((updated) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)),
+    );
   }, []);
 
   const handleDelete = useCallback(async (user) => {
@@ -149,6 +146,16 @@ export default function App() {
       ) : (
         <DataTable columns={columns} data={users} />
       )}
+
+      <EditUserDialog
+        user={editingUser}
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditingUser(null);
+        }}
+        onSaved={handleSaved}
+      />
     </main>
   );
 }
